@@ -56,6 +56,9 @@ generate
 
         wire [MASK_WIDTH-1:0] mask;
 
+        wire [2:0] act_src_sel = i_act_src_sel[(i+1)*3-1:i*3];
+        wire [2:0] weight_src_sel = i_weight_src_sel[(i+1)*3-1:i*3];
+
         if (i < 4) begin
             assign mask = {i_wb_mask[3][i],i_wb_mask[2][i],i_wb_mask[1][i],i_wb_mask[0][i]};
 
@@ -65,34 +68,34 @@ generate
         end
 
         // Act data
-        assign act = (i_act_src_sel[(i+1)*3-1:i*3] == 0)? i_wb_data[31:0]:
-                     (i_act_src_sel[(i+1)*3-1:i*3] == 1)? i_wb_data[63:32]:
-                     (i_act_src_sel[(i+1)*3-1:i*3] == 4)? i_act_data_bus[(i+1)*RAM_DATA_WIDTH-1:i*RAM_DATA_WIDTH]:32'd0;
+        assign act = (act_src_sel == 0)? i_wb_data[31:0]:
+                     (act_src_sel == 1)? i_wb_data[63:32]:
+                     (act_src_sel == 4)? i_act_data_bus[(i+1)*RAM_DATA_WIDTH-1:i*RAM_DATA_WIDTH]:32'd0;
         assign act_data_bus_addr = (i < 4)? i_act_data_bus_addr[9:0]:i_act_data_bus_addr[19:10];
-        assign act_addr = (i_act_src_sel[(i+1)*3-1:i*3] == 0)? i_wb_addr[9:0]:
-                          (i_act_src_sel[(i+1)*3-1:i*3] == 1)? i_wb_addr[19:10]:
-                          (i_act_src_sel[(i+1)*3-1:i*3] == 4)? act_data_bus_addr:10'd0;
+        assign act_addr = (act_src_sel == 0)? i_wb_addr[9:0]:
+                          (act_src_sel == 1)? i_wb_addr[19:10]:
+                          (act_src_sel == 4)? act_data_bus_addr:10'd0;
 
         // Weight data
-        assign weight = (i_weight_src_sel[(i+1)*3-1:i*3] == 2)? i_wb_data[95:64]:
-                        (i_weight_src_sel[(i+1)*3-1:i*3] == 3)? i_wb_data[127:96]:
-                        (i_weight_src_sel[(i+1)*3-1:i*3] == 4)? i_weight_data_bus[(i+1)*RAM_DATA_WIDTH-1:i*RAM_DATA_WIDTH]:32'd0;
+        assign weight = (weight_src_sel == 2)? i_wb_data[95:64]:
+                        (weight_src_sel == 3)? i_wb_data[127:96]:
+                        (weight_src_sel == 4)? i_weight_data_bus[(i+1)*RAM_DATA_WIDTH-1:i*RAM_DATA_WIDTH]:32'd0;
         assign weight_data_bus_addr = (i < 4)? i_weight_data_bus_addr[9:0]:i_weight_data_bus_addr[19:10];
-        assign weight_addr = (i_weight_src_sel[(i+1)*3-1:i*3] == 2)? i_wb_addr[29:20]:
-                          (i_weight_src_sel[(i+1)*3-1:i*3] == 3)? i_wb_addr[39:30]:
-                          (i_weight_src_sel[(i+1)*3-1:i*3] == 4)? weight_data_bus_addr:10'd0;
+        assign weight_addr = (weight_src_sel == 2)? i_wb_addr[29:20]:
+                          (weight_src_sel == 3)? i_wb_addr[39:30]:
+                          (weight_src_sel == 4)? weight_data_bus_addr:10'd0;
         
         // Write enable A-port(Act)
-        assign wen_a = (i_act_src_sel[(i+1)*3-1:i*3] == 0)? i_wb_addr_valid[0]&i_wb_data_valid[0]&mask[0]:
-                       (i_act_src_sel[(i+1)*3-1:i*3] == 1)? i_wb_addr_valid[1]&i_wb_data_valid[1]&mask[1]:
-                       (i_act_src_sel[(i+1)*3-1:i*3] == 4)? (i < 4 ? i_wen_act_bus[0] : i_wen_act_bus[1]):1'b0;
+        assign wen_a = (act_src_sel == 0)? i_wb_addr_valid[0]&i_wb_data_valid[0]&mask[0]:
+                       (act_src_sel == 1)? i_wb_addr_valid[1]&i_wb_data_valid[1]&mask[1]:
+                       (act_src_sel == 4)? (i < 4 ? i_wen_act_bus[0] : i_wen_act_bus[1]):1'b0;
         assign en_sel_a = (i < 4)? i_en_act_bus[0]:i_en_act_bus[1];
         assign en_a = en_sel_a | wen_a;
 
         // Write enable B-port(Weight)
-        assign wen_b = (i_weight_src_sel[(i+1)*3-1:i*3] == 2)? i_wb_addr_valid[2]&i_wb_data_valid[2]&mask[2]:
-                       (i_weight_src_sel[(i+1)*3-1:i*3] == 3)? i_wb_addr_valid[3]&i_wb_data_valid[3]&mask[3]:
-                       (i_weight_src_sel[(i+1)*3-1:i*3] == 4)? (i < 4 ? i_wen_weight_bus[0] : i_wen_weight_bus[1]):1'b0;
+        assign wen_b = (weight_src_sel == 2)? i_wb_addr_valid[2]&i_wb_data_valid[2]&mask[2]:
+                       (weight_src_sel == 3)? i_wb_addr_valid[3]&i_wb_data_valid[3]&mask[3]:
+                       (weight_src_sel == 4)? (i < 4 ? i_wen_weight_bus[0] : i_wen_weight_bus[1]):1'b0;
         assign en_sel_b = (i < 4)? i_en_weight_bus[0]:i_en_weight_bus[1];
         assign en_b = en_sel_b | wen_b;
 

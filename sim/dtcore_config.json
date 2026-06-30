@@ -1,0 +1,153 @@
+{
+  "system_info": {
+    "architecture": "DTCore_v2_Lite",
+    "version": "1.1",
+    "total_pes": 64,
+    "frequency_mhz": 400
+  },
+
+  "control_flow": {
+    "description": "T_ENC state machine behavior definitions",
+    "t_enc_persistence": "PERSISTENT_UNTIL_SCALE_CHANGE",
+    "require_reissue_on_scale_change": true,
+    "require_reissue_on_mode_change": false,
+    "comment": "T_ENC is only required at system startup. Subsequent T_SCM (mode change) does NOT require re-issuing T_ENC unless Scale factor updates."
+  },
+
+  "hardware_constraints": {
+    "regfile": {
+      "banks": 2,
+      "bank_names": ["LOW", "HIGH"],
+      "depth_per_bank": 1024,
+      "width_bits": 128
+    },
+    "agu": {
+      "count": 4,
+      "slot_binding": {
+        "0": {"bank": "LOW", "type": "ACT"},
+        "1": {"bank": "HIGH", "type": "ACT"},
+        "2": {"bank": "LOW", "type": "WGT"},
+        "3": {"bank": "HIGH", "type": "WGT"}
+      },
+      "thread_id_priority_groups": {
+        "high_priority": [0, 1],
+        "low_priority": [2, 3]
+      }
+    },
+    "interconnect": {
+      "description": "RegFile Port MUX Connectivity: Group-based Full Mesh",
+      "allow_cross_bank_write": true, 
+      "comment": "Act Group (Slots 0/1) accepts Tiles 0/1. Weight Group (Slots 2/3) accepts Tiles 2/3.",
+      "valid_routes": {
+        "0": [0, 1],
+        "1": [0, 1],
+        "2": [2, 3],
+        "3": [2, 3]
+      }
+    },
+    "hazards": {
+      "description": "AGU Resource Conflict Behavior",
+      "agu_thread_slot_contention": {
+        "mechanism": "NON_BLOCKING_DROP",
+        "behavior": "IGNORE_NEW_INSTRUCTION",
+        "comment": "CRITICAL: If an AGU Thread Slot is busy, any new instruction targeting it will be IGNORED by hardware. Compiler MUST track busy cycles.",
+        "safe_guard": "Compiler must track (Length * Interval) and insert NOPs if needed."
+      },
+      "allow_simultaneous_rw_same_subslot": false
+    },
+    "buffers": {
+      "odb_depth": 1024,
+      "odb_description": "Output Data Buffer depth. Compiler should warn if C_OUT exceeds this without external drain.",
+      "instruction_buffer_depth": 512
+    }
+  },
+
+  "timing_model": {
+    "description": "Pipeline latency and safety padding parameters",
+    "frontend": {
+      "decode_latency": 0,
+      "issue_latency": 1,
+      "instruction_fetch_gap": 0
+    },
+    "datapath": {
+      "r_r_to_tile_arrival": 3,
+      "pe_enable_delay": 1
+    },
+    "writeback": {
+      "t_wb_pipeline_depth": 3,
+      "pipeline_drain_safety_margin": 1,
+      "stages": ["DA_Select", "Reorder", "Write_RAM"],
+      "desc": "CRITICAL: All R-Type instructions (0xxxxx) modify RegFile MUX/Ctrl. MUST strictly enforce 4 cycles (3+1) of NOPs after T_WB sequence before issuing ANY R-Type instruction (R_R, R_CW, R_TWB)."
+    },
+    "safety": {
+      "requires_double_sync": false,
+      "r_cw_post_sync_delay": 0,
+      "r_cw_desc": "Optimized HW: No delay needed.",
+      
+      "tile_busy_detection": {
+        "description": "Minimum instruction gap between T_SCM and B_SYNC(Wait_Tile) to avoid false idle.",
+        "logic": "Dependent on the length of the preceding R_R instruction.",
+        "constraints": {
+          "single_data": { 
+            "length_threshold": 0, 
+            "required_gap_cycles": 2,
+            "comment": "For Length=0 (1 item). Need 2 cycle gap. B_SYNC valid at 3rd instr after T_SCM."
+          },
+          "burst_data": { 
+            "length_threshold": 1, 
+            "required_gap_cycles": 1, 
+            "comment": "For Length>0. Need 1 cycle gap. B_SYNC valid at 2nd instr after T_SCM."
+          }
+        }
+      }
+    }
+  },
+
+"compute_modes": {
+    "description": "Tile Compute Configuration (T_SCM [13:10]). Also defines required AGU data rate (R_R [21:20]).",
+    "comment": "Compiler usage: Use 'mode_bits' for T_SCM instruction. Use 'agu_mode' for R_R instruction.",
+    
+    "SPARSE_1_4": { 
+      "mode_bits": 0,   "//": "4'b0000 (Tile: Sparse 1:4)",
+      "agu_interval": 0,    "//": "2'b00   (AGU: No Interval)",
+      "latency": 3 
+    },
+    "SPARSE_2_4": { 
+      "mode_bits": 4,   "//": "4'b0100 (Tile: Sparse 2:4)",
+      "agu_interval": 1,    "//": "2'b01   (AGU: Interval 1)",
+      "latency": 4 
+    },
+    "SPARSE_3_4": { 
+      "mode_bits": 8,   "//": "4'b1000 (Tile: Sparse 3:4)",
+      "agu_interval": 2,    "//": "2'b10   (AGU: Interval 2)",
+      "latency": 5 
+    },
+    "DENSE_4_4":  { 
+      "mode_bits": 12,  "//": "4'b1100 (Tile: Dense 4:4)",
+      "agu_interval": 3,    "//": "2'b11   (AGU: Interval 3)",
+      "latency": 6 
+    },
+    "SIMD": { 
+      "mode_bits": 1,   "//": "4'b0001 (Tile: SIMD)",
+      "agu_interval": 0,    "//": "2'b00   (AGU: No Interval)",
+      "latency": 3 
+    },
+    "SCALE": { 
+      "mode_bits": 14,  "//": "4'b1110 (Tile: SCALE)",
+      "agu_interval": 0,    "//": "N/A (Data internal)",
+      "latency": 5,
+      "desc": "Post-processing mode. No external data stream needed."
+    }
+  },
+
+  "wb_patterns": {
+    "ROW_0": { "da_bus": [0, 0, 0, 0], "reorder": [3, 2, 1, 0] },
+    "ROW_1": { "da_bus": [1, 1, 1, 1], "reorder": [2, 1, 0, 3] },
+    "ROW_2": { "da_bus": [2, 2, 2, 2], "reorder": [1, 0, 3, 2] },
+    "ROW_3": { "da_bus": [3, 3, 3, 3], "reorder": [0, 3, 2, 1] },
+    "COL_0": { "da_bus": [1, 2, 3, 0], "reorder": [1, 2, 3, 0] },
+    "COL_1": { "da_bus": [2, 3, 0, 1], "reorder": [2, 3, 0, 1] },
+    "COL_2": { "da_bus": [3, 0, 1, 2], "reorder": [3, 0, 1, 2] },
+    "COL_3": { "da_bus": [0, 1, 2, 3], "reorder": [0, 1, 2, 3] }
+  }
+}

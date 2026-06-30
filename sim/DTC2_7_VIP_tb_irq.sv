@@ -8,7 +8,7 @@ import axi_vip_pkg::*;
 import DTC2_7VIP_M_CTRL_0_pkg::*;
 import DTC2_7VIP_S_MEM_0_pkg::*;
 
-module DTC2_7_VIP_tb();
+module DTC2_7_VIP_tb_irq();
 
     // Declare signals connecting to the DUT
     bit clk_100MHz;
@@ -111,18 +111,20 @@ module DTC2_7_VIP_tb();
         // load_mem_file_backdoor("C:/Users/gunda/Desktop/DTComplierv31/output_verification/input_wgt_H.mem", 32'h00010060);
 
         // in laptop
-        load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/instruction.mem", 32'h00000000);
-        load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/input_act_L.mem", 32'h00010000);
-        load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/input_act_H.mem", 32'h00010020);
-        load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/input_wgt_L.mem", 32'h00010040);
-        load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/input_wgt_H.mem", 32'h00010060);
+        // load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/instruction.mem", 32'h00000000);
+        // load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/input_act_L.mem", 32'h00010000);
+        // load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/input_act_H.mem", 32'h00010020);
+        // load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/input_wgt_L.mem", 32'h00010040);
+        // load_mem_file_backdoor("C:/Users/Zenbear/Desktop/DTComplierv31/output_verification/input_wgt_H.mem", 32'h00010060);
 
         // in lab
-        // load_mem_file_backdoor("/home/user/Allen/Desktop/DTComplierv31/output_verification/instruction.mem", 32'h00000000);
-        // load_mem_file_backdoor("/home/user/Allen/Desktop/DTComplierv31/output_verification/input_act_L.mem", 32'h00010000);
-        // load_mem_file_backdoor("/home/user/Allen/Desktop/DTComplierv31/output_verification/input_act_H.mem", 32'h00010020);
-        // load_mem_file_backdoor("/home/user/Allen/Desktop/DTComplierv31/output_verification/input_wgt_L.mem", 32'h00010040);
-        // load_mem_file_backdoor("/home/user/Allen/Desktop/DTComplierv31/output_verification/input_wgt_H.mem", 32'h00010060);
+        load_mem_file_backdoor("/home/user/Allen/DTComplierv31/output_verification/instruction.mem", 32'h00000000);
+        load_mem_file_backdoor("/home/user/Allen/DTComplierv31/output_verification/input_act_L.mem", 32'h00010000);
+        load_mem_file_backdoor("/home/user/Allen/DTComplierv31/output_verification/input_act_H.mem", 32'h00010020);
+        load_mem_file_backdoor("/home/user/Allen/DTComplierv31/output_verification/input_wgt_L.mem", 32'h00010040);
+        load_mem_file_backdoor("/home/user/Allen/DTComplierv31/output_verification/input_wgt_H.mem", 32'h00010060);
+
+        
 
         // 1. System Reset & Init
         $display("[Master VIP] 1.1 Execute Software Reset");
@@ -137,7 +139,7 @@ module DTC2_7_VIP_tb();
         $display("[Master VIP] 2.1 Load Instructions to IFB");
         master_agent.AXI4LITE_WRITE_BURST(base_reg + 32'h310, prot, 32'h0000_0000, resp); // CSR_MS_R_ADDR_LO
         master_agent.AXI4LITE_WRITE_BURST(base_reg + 32'h314, prot, 32'h0000_0000, resp); // CSR_MS_R_ADDR_HI
-        master_agent.AXI4LITE_WRITE_BURST(base_reg + 32'h318, prot, 32'h0000_0013, resp); // CSR_MS_R_LEN 
+        master_agent.AXI4LITE_WRITE_BURST(base_reg + 32'h318, prot, 32'h0000_0012, resp); // CSR_MS_R_LEN 
         master_agent.AXI4LITE_WRITE_BURST(base_reg + 32'h00,  prot, 32'h0000_4080, resp); // Trigger DMA read
         $display("[Master VIP] Waiting for o_irq (DMA rxn_done)...");
         wait(o_irq == 1'b1);
