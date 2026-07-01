@@ -1,4 +1,4 @@
-# **Instruction Format Overview **
+# Instruction Format Overview
 
 ### **1.1 VLIW Bundle Layout**
 
